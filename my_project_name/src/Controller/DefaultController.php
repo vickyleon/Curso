@@ -8,6 +8,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+
 
 use App\Entity\User;
 use App\Services\GiftsService;
@@ -15,27 +18,39 @@ use App\Services\GiftsService;
 class DefaultController extends AbstractController
 {
 
+    public function __construct($logger){
+
+    }
   
     /**
-     * @Route("/default/{name}", name="default")
+     * @Route("/default/{name?}", name="default")
      */
     public function index($name,GiftsService $gifts, Request $request, SessionInterface $session)
     {
-        
+        if(!$name){
+            $name = "Nombre";
+        }
+
         //$users = ['Adam','Robert','John','Susan'];
 
         $users = $this->getDoctrine()->getRepository(User::class)->findAll();
 
-        $session->set('name','session value');
+        if(!$users){
+            throw $this->createNotFoundException('Te users do not exist');
+            
+        }
+
+        //exit($request->query->get('page','default'));
+
+
+        /*$session->set('name','session value');
     
-       // $session->remove('name');
+        $session->remove('name');
        $session->clear();
 
         if($session->has('name')){
             exit($session->get('name'));
         }
-
-       
 
         $cookie = new Cookie(
             'my_cookie',    // Cookie name
@@ -50,6 +65,7 @@ class DefaultController extends AbstractController
         $res = new Response();
         $res->headers->clearCookie('my_cookie');
         $res->send();
+        */
 
         $this->addFlash(
 
@@ -71,6 +87,9 @@ class DefaultController extends AbstractController
             'users'           => $users,
             'random_gift'     => $gifts->gifts
         ]);
+
+
+
     }
     /**
      * @Route("/default1/{name}", name="default1")
@@ -127,7 +146,65 @@ class DefaultController extends AbstractController
             return new Response('Trnaslated routes');
 
      }
-     
+
+      /**
+     * @Route("/generate-url/{param?}", name="generate_url" )
+     */
+
+    public function generate_url(){
+
+        exit($this->generateUrl(
+            'generate_url',
+            array('param' => 10),
+            UrlGeneratorInterface::ABSOLUTE_URL
+        ));
+    }
+
+      /**
+     * @Route("/download" )
+     */
+     public function download(){
+         $path = $this->getParameter('download_directory');
+         return $this->file($path.'file.pdf');
+     }
+
+      /**
+     * @Route("/redirect-test" )
+     */
+    public function redirectTest(){
+
+        return $this->redirectToRoute('route_to_redirect',
+            array('param' => 10)
+    );
+
+    }
+
+    /**
+     * @Route("/url-to-redirect/{param?}", name="route_to_redirect" )
+     */
+    public function methodToRedirect(){
+        exit('Test redirection');
+    }
+
+    /**
+     * @Route("/forwarding-to-controller" )
+     */
+    public function forwardingToController(){
+
+        $response = $this->forward(
+            'App\Controller\DefaultController:methodToForwardTo',
+            array('param' => '1')
+        );
+        return $response;
+
+    }
+     /**
+     * @Route("/url-to-forward-to/{param?}", name="route_to_forward_to" )
+     */
+    public function methodToForwardTo($param){
+        exit('Test controller forwarding -'.$param);
+    }
+
 
     
 }
